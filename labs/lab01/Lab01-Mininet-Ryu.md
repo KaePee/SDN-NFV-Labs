@@ -135,7 +135,7 @@ Exit (`exit`) before Part C.
 
 ---
 
-## PART C — Connect Ryu and watch OpenFlow on the wire (core, ~15 min)
+## PART C — Connect Ryu and watch OpenFlow on the wire
 
 Open **three terminals**.
 
@@ -222,11 +222,11 @@ Example from a reference run (pingall + one ping):
       3 19     MULTIPART_REPLY
 ```
 
-> **Checkpoint C (core check-off):** show the instructor (1) `pingall` at 0% dropped, (2) a Wireshark/tshark view with a PACKET_IN → FLOW_MOD pair, (3) the flow table of `s2`. Explain why there are as many PACKET_OUTs as PACKET_INs, but fewer FLOW_MODs.
+> Explain why there are as many PACKET_OUTs as PACKET_INs, but fewer FLOW_MODs.
 
 ---
 
-## PART D — Write your own controller apps (extended, ~45 min)
+## PART D — Write your own controller apps
 
 ### D1. The hub: the controller does everything
 
@@ -306,7 +306,7 @@ Modify `learning_switch_13.py` to **block all traffic between h1 and h4** in bot
 
 ---
 
-## PART E — Emulating long links (extended, ~20 min) — a first look at NTN
+## PART E — Emulating long links — a first look at NTN
 
 `lab_topo.py` can shape the two **core links** (s1–s2 and s2–s3):
 
@@ -329,7 +329,7 @@ sudo python3 lab_topo.py --delay 60ms --bw 20
 
 ---
 
-## PART F — Break it: loops (extended, ~15 min)
+## PART F — Break it: loops
 
 `--loop` adds a link s1–s3 (port 4 on both), creating a physical loop ([*Lab 1 - loop variant*](topology.md#lab-1---loop-variant)).
 
