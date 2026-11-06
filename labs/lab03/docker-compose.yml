@@ -1,0 +1,74 @@
+# TE 578/778 - Lab 3: Docker-based VNFs and a service function chain
+#
+# Topology: see lab03/topology.md, diagram "Lab 3 - service chain".
+# In words: networks access (client .10, rogue .66, vfw .2), core (vfw .2, vlb .3)
+# and srv (vlb .3, web1 .11, web2 .12); the vFW and vLB each sit on two networks.
+#
+# Service chain:  client -> vFW -> vLB -> {web1, web2}
+# The client only ever talks to 10.10.1.2:80 (the vFW "service IP").
+
+name: lab3-sfc
+
+networks:
+  access: { ipam: { config: [ { subnet: 10.10.1.0/24 } ] } }
+  core:   { ipam: { config: [ { subnet: 10.10.2.0/24 } ] } }
+  srv:    { ipam: { config: [ { subnet: 10.10.3.0/24 } ] } }
+
+services:
+
+  web1:
+    image: nginx:1.27-alpine
+    container_name: web1
+    hostname: web1
+    volumes: [ "./web/web1.html:/usr/share/nginx/html/index.html:ro" ]
+    networks: { srv: { ipv4_address: 10.10.3.11 } }
+
+  web2:
+    image: nginx:1.27-alpine
+    container_name: web2
+    hostname: web2
+    volumes: [ "./web/web2.html:/usr/share/nginx/html/index.html:ro" ]
+    networks: { srv: { ipv4_address: 10.10.3.12 } }
+
+  vlb:                                   # VNF 2: load balancer
+    image: nginx:1.27-alpine
+    container_name: vlb
+    hostname: vlb
+    volumes: [ "./vnf-lb/nginx.conf:/etc/nginx/nginx.conf:ro" ]
+    depends_on: [ web1, web2 ]
+    networks:
+      core: { ipv4_address: 10.10.2.3 }
+      srv:  { ipv4_address: 10.10.3.3 }
+
+  vfw:                                   # VNF 1: firewall + NAT (chain entry point)
+    build: ./vnf-fw
+    image: lab3/vnf-fw:1.0
+    container_name: vfw
+    hostname: vfw
+    cap_add: [ NET_ADMIN ]
+    sysctls: [ net.ipv4.ip_forward=1 ]
+    environment:
+      IN_NET: "10.10.1."
+      OUT_NET: "10.10.2."
+      NEXT_HOP: "10.10.2.3"              # <- change this to re-wire the chain (Part D)
+      SERVICE_PORT: "80"
+      BLOCKED_SRC: "10.10.1.66"
+      MODE: firewall
+    depends_on: [ vlb ]
+    networks:
+      access: { ipv4_address: 10.10.1.2 }
+      core:   { ipv4_address: 10.10.2.2 }
+
+  client:                                # user equipment
+    build: ./client
+    image: lab3/client:1.0
+    container_name: client
+    hostname: client
+    networks: { access: { ipv4_address: 10.10.1.10 } }
+
+  rogue:                                 # a blacklisted host (same image as client)
+    build: ./client
+    image: lab3/client:1.0
+    container_name: rogue
+    hostname: rogue
+    networks: { access: { ipv4_address: 10.10.1.66 } }

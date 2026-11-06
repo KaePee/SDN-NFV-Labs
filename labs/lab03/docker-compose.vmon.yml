@@ -1,0 +1,31 @@
+# TE 578/778 - Lab 3 Part D: insert a monitoring VNF into the running chain
+# Topology: see lab03/topology.md, diagram "Lab 3 - chain with vMON".
+#
+#   client -> vFW -> vMON -> vLB -> {web1, web2}
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.vmon.yml up -d
+# Compose merges the two files: vmon is added, and vfw is re-created with a new NEXT_HOP.
+
+services:
+  vmon:                                  # VNF 3: passive monitor / IDS-lite
+    image: lab3/vnf-fw:1.0               # same image as vFW, different "descriptor"
+    container_name: vmon
+    hostname: vmon
+    cap_add: [ NET_ADMIN ]
+    sysctls: [ net.ipv4.ip_forward=1 ]
+    environment:
+      IN_NET: "10.10.2."
+      OUT_NET: "10.10.2."                # one-armed: in and out on the same network
+      NEXT_HOP: "10.10.2.3"              # -> vLB
+      SERVICE_PORT: "80"
+      BLOCKED_SRC: ""
+      MODE: monitor
+    depends_on: [ vlb ]
+    networks:
+      core: { ipv4_address: 10.10.2.4 }
+
+  vfw:
+    environment:
+      NEXT_HOP: "10.10.2.4"              # vFW now hands traffic to vMON instead of vLB
+    depends_on: [ vmon ]
