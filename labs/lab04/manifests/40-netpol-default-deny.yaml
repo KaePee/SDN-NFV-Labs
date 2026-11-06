@@ -1,0 +1,10 @@
+# TE 578/778 - Lab 4: zero-trust baseline - no pod in nfv-lab accepts ANY ingress traffic.
+# Topology: see lab04/topology.md, diagram "Lab 4 - allowed flows after NetworkPolicy".
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: nfv-lab
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]

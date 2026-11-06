@@ -1,0 +1,19 @@
+# TE 578/778 - Lab 4 (extended): elastic scaling of the web CNF (needs metrics-server).
+# Topology: see lab04/topology.md, diagram "Lab 4 - CNF service" (the web Deployment scales).
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: web
+  namespace: nfv-lab
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: web}
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 50}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 30     # default is 300 s; shortened for the lab

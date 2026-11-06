@@ -1,0 +1,25 @@
+# TE 578/778 - Lab 4: test pods. "client" is allowed by NetworkPolicy, "rogue" is not.
+# Topology: see lab04/topology.md, diagram "Lab 4 - CNF service".
+apiVersion: v1
+kind: Pod
+metadata:
+  name: client
+  namespace: nfv-lab
+  labels: {role: client}
+spec:
+  containers:
+    - name: curl
+      image: curlimages/curl:8.10.1
+      command: ["sh", "-c", "while true; do sleep 3600; done"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rogue
+  namespace: nfv-lab
+  labels: {role: rogue}
+spec:
+  containers:
+    - name: curl
+      image: curlimages/curl:8.10.1
+      command: ["sh", "-c", "while true; do sleep 3600; done"]

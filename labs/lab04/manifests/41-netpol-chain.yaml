@@ -1,0 +1,33 @@
+# TE 578/778 - Lab 4: enforce the service chain with policy:
+#   role=client  -> gw:80      (only clients may enter the chain)
+#   app=gw       -> web:80     (only the gateway may reach the backend)
+# Topology: see lab04/topology.md, diagram "Lab 4 - allowed flows after NetworkPolicy".
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-clients-to-gw
+  namespace: nfv-lab
+spec:
+  podSelector:
+    matchLabels: {app: gw}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {role: client}
+      ports: [{protocol: TCP, port: 80}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gw-to-web
+  namespace: nfv-lab
+spec:
+  podSelector:
+    matchLabels: {app: web}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app: gw}
+      ports: [{protocol: TCP, port: 80}]

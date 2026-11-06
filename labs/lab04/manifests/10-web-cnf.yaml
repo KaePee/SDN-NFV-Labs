@@ -1,0 +1,63 @@
+# TE 578/778 - Lab 4: backend CNF ("web") - a Deployment behind a ClusterIP Service.
+# Topology: see lab04/topology.md, diagram "Lab 4 - CNF service" (svc/web and its pods).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-conf
+  namespace: nfv-lab
+data:
+  default.conf: |
+    server {
+      listen 80;
+      location /healthz { return 200 "ok\n"; }
+      location / {
+        default_type text/plain;
+        return 200 "Served by $hostname\n";
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: nfv-lab
+  labels: {app: web}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: web}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}   # never drop below 2 ready pods
+  template:
+    metadata:
+      labels: {app: web, tier: backend}
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports: [{containerPort: 80}]
+          volumeMounts:
+            - {name: conf, mountPath: /etc/nginx/conf.d}
+          readinessProbe:                 # only receive traffic when this succeeds
+            httpGet: {path: /healthz, port: 80}
+            periodSeconds: 2
+          livenessProbe:                  # restart the container if this fails
+            httpGet: {path: /healthz, port: 80}
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 50m, memory: 32Mi}
+            limits:   {cpu: 200m, memory: 64Mi}
+      volumes:
+        - name: conf
+          configMap: {name: web-conf}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: nfv-lab
+spec:
+  type: ClusterIP
+  selector: {app: web}
+  ports: [{port: 80, targetPort: 80}]

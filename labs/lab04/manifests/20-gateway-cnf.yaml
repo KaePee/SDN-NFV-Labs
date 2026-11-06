@@ -1,0 +1,69 @@
+# TE 578/778 - Lab 4: gateway CNF ("gw") - the chain entry point.
+# Policy: rate limit per client IP, block /admin, then proxy to svc/web.
+# Topology: see lab04/topology.md, diagram "Lab 4 - CNF service" (svc/gw -> gw pod -> svc/web).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gw-conf
+  namespace: nfv-lab
+data:
+  nginx.conf: |
+    events {}
+    http {
+      limit_req_zone $binary_remote_addr zone=perclient:10m rate=10r/s;
+      log_format chain '$remote_addr -> $upstream_addr "$request" $status';
+      access_log /dev/stdout chain;
+      upstream web_svc { server web.nfv-lab.svc.cluster.local:80; }
+      server {
+        listen 80;
+        location /healthz { return 200 "ok\n"; }
+        location /admin   { default_type text/plain; return 403 "blocked by gateway CNF\n"; }
+        location / {
+          limit_req zone=perclient burst=20 nodelay;
+          limit_req_status 429;
+          proxy_pass http://web_svc;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          add_header X-Chain "gw -> svc/web -> $upstream_addr" always;
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gw
+  namespace: nfv-lab
+  labels: {app: gw}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: gw}
+  template:
+    metadata:
+      labels: {app: gw, tier: edge}
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports: [{containerPort: 80}]
+          volumeMounts:
+            - {name: conf, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf}
+          readinessProbe:
+            httpGet: {path: /healthz, port: 80}
+            periodSeconds: 2
+          resources:
+            requests: {cpu: 50m, memory: 32Mi}
+            limits:   {cpu: 300m, memory: 64Mi}
+      volumes:
+        - name: conf
+          configMap: {name: gw-conf}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gw
+  namespace: nfv-lab
+spec:
+  type: NodePort
+  selector: {app: gw}
+  ports: [{port: 80, targetPort: 80, nodePort: 30080}]

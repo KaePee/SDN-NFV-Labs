@@ -1,0 +1,7 @@
+# TE 578/778 - Lab 4. Topology: see lab04/topology.md, diagram "Lab 4 - CNF service".
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nfv-lab
+  labels:
+    course: te578
